@@ -53,47 +53,47 @@ export class AuthController {
       response.status(500).json({ error: "Hubo un error" });
     }
   };
-  static login = async (request: Request, response: Response) => {
+  static login = async (req: Request, res: Response) => {
     try {
-      const { email, password } = request.body;
-      const user = await User.findOne({ email });
-      //. ->    Verificar que exista el usuario
-      if (!user) {
-        const error = new Error("Usuario no encontrado");
-        return response.status(404).json({ error: error.message });
-      }
-      //. ->    Verificar que este confirmado
-      if (!user.confirmed) {
-        const token = new Token();
-        token.user = user.id;
-        token.token = generateToken();
-        //# ->  Enviar email
-        AuthEmail.senConfirmationEmail({
-          email: user.email,
-          name: user.name,
-          token: token.token,
-        });
-        token.save();
-        const error = new Error(
-          "Usuario no confirmado, se le ha enviado un correo de confirmacion"
-        );
-        return response.status(401).json({ error: error.message });
-      }
-      //. ->    Verificar contraseña
-      const isPasswordCorrect = await checkPassword(password, user.password);
-      if (!isPasswordCorrect) {
-        const error = new Error("Contraseña incorrecta");
-        return response.status(401).json({ error: error.message });
-      }
-      //. ->    Paso todas las verificaciones -> Generar JWT
-      const token = generateJWT({id:user._id})
-      response.send(token);
+        const { email, password } = req.body
+        const user = await User.findOne({ email })
+        if (!user) {
+            const error = new Error('Usuario no encontrado')
+            return res.status(404).json({ error: error.message })
+        }
+
+        if (!user.confirmed) {
+            const token = new Token()
+            token.user = user.id
+            token.token = generateToken()
+            await token.save()
+
+            // enviar el email
+            AuthEmail.senConfirmationEmail({
+                email: user.email,
+                name: user.name,
+                token: token.token
+            })
+
+            const error = new Error('La cuenta no ha sido confirmada, hemos enviado un e-mail de confirmación')
+            return res.status(401).json({ error: error.message })
+        }
+
+        // Revisar password
+        const isPasswordCorrect = await checkPassword(password, user.password)
+        if(!isPasswordCorrect) {
+            const error = new Error('Password Incorrecto')
+            return res.status(401).json({ error: error.message })
+        }
+
+        const token = generateJWT({id: user._id})
+        
+        res.send(token)
+
+    } catch (error) {
+        res.status(500).json({ error: 'Hubo un error' })
     }
-    //# ->  Error generico
-    catch (error) {
-      response.status(500).json({ error: "Hubo un error" });
-    }
-  };
+}
   static requestConfirmationCode = async (
     request: Request,
     response: Response
