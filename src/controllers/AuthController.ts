@@ -45,7 +45,6 @@ export class AuthController {
         const error = new Error("Token no valido");
         return response.status(404).json({ error: error.message });
       }
-      console.log(tokenExist);
       const user = await User.findById(tokenExist.user);
       user.confirmed = true;
       await Promise.allSettled([user.save(), tokenExist.deleteOne()]);
